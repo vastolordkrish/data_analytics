@@ -1,134 +1,202 @@
+
+import tkinter as tk
+from tkinter import filedialog, messagebox
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-#[1]data loading
-df = pd.read_excel("movie_data.xlsx")
+#----------------------------------------------------------------------------------------------------
 
-print(df.head())
+#ui setup
+root=tk.Tk()
+root.title("Excel data preview")
+root.geometry("600x400")
 
-
-#[2]data cleaning
-
-#show missing values
-print("df.isnull().sum()")
-
-#replace missing values with not inserted
-df.fillna("not inserted")
-
-#delete duplicate values
-dd = df.drop_duplicates()
-
-#change column titles:
-#1.orignal coloumns
-print("orignal coloumns :")
-print(df.columns)
-
-df.columns = df.columns.str.strip().str.upper()
-#2.capital coloumns title
-print("\ncapital coloumns title:")
-print(df.columns)
-
-#remove extra space 
-
-df["MOVIE"]=df["MOVIE"].str.strip()
-
-df["GENRE"]=df["GENRE"].str.strip()
-
-df["PRODUCTION_STUDIO"]=df["PRODUCTION_STUDIO"].str.strip()
-
-#changing datatype
-df['SR.NO'] = df['SR.NO'].astype(int)
-#df['OSCAR WON'] = df['OSCAR WON'].astype(float)
+title_label =tk.Label(root,text="Movie review analysis",font=("Arial", 24 ,"bold"))
+title_label.pack(pady=10)
 
 
-#[3]data analysis
+#left side
+left_frame = tk.Frame(root)
+left_frame.pack(side="left", expand = True, fill="both")
 
-#to calculate average rating
+right_frame= tk.Frame(root, width=300)
+right_frame.pack(side="bottom",fill="both",expand=True)
+
+
+#**charts**
+chart_frame=tk.Frame(left_frame, height=400)
+chart_frame.pack(side="bottom", expand = True, fill="both")
+
+
+
+
+
+text_box =tk.Text(left_frame,wrap=tk.WORD, font=("courier",10), height=15)
+text_box.pack(expand=True,fill="both", padx=10,pady=10)
+
+
+
+result_lable = tk.Label(right_frame, text=" ",font=("Arial", 12),justify="left",anchor="n")
+result_lable.pack(pady=10, padx=10,)
+
+
+#value count
+value_count_label = tk.Label(right_frame, text="", font=("Arial", 12),justify="left",anchor="n")
+value_count_label.pack(padx=10, pady=10)
+
+#filter
+genre_entry = tk.Entry(right_frame)
+genre_entry.pack(pady=5)
+filtered_text= tk.Text(right_frame, height=10, width=50)
+filtered_text.pack(pady=5)
+filter_button = tk.Button(right_frame, text="Search by Genre")
+filter_button.pack(pady=5)
+
+
+#-----------------------------------------------------------------------------------------------------
+#uplod file
+
+
+
+def upload_file():
+    global df
+    file_path= filedialog.askopenfilename(title ="select the movie excel file",
+                                         filetypes=[("excel files","*.xlsx",)])
+ #reading uploded 
+    #df.fillna("not inserted")
+
+    
+    if file_path:
+        try:
+            df=pd.read_excel(file_path)
+            preview_data=df.head().to_string(index=False)
+            text_box.delete("1.0",tk.END)
+            text_box.insert(tk.END,preview_data)
+
+
+
+
+            
+            #[3]data analysis
+
+            #to calculate average rating
  
-avg_rating = df['IMDB_RATING'].mean()
-print("average rating is :",avg_rating)
+            avg_rating = df['IMDb_Rating'].mean()
+        
 
-avg_budget = df['BUDGET_USD'].mean()
-print("average budget is :",avg_budget)
+            avg_budget = df['Budget_USD'].mean()
+           
 
-#highest and lowest rating and budget
+            #highest and lowest rating and budget
 
-#rating:
-max_rating = df['IMDB_RATING'].max()
-print("maximum rating is :",max_rating)
+            #rating:
+            max_rating = df['IMDb_Rating'].max()
+            
 
-min_rating = df['IMDB_RATING'].min()
-print("minimum rating is :",min_rating)
+            min_rating = df['IMDb_Rating'].min()
+            
 
-#budget:
-max_budget = df['BUDGET_USD'].max()
-print("maximum budget is :",max_budget)
+            #budget:
+            max_budget = df['Budget_USD'].max()
+           
 
-min_budget = df['BUDGET_USD'].min()
-print("minimum budget is :",min_budget)
-
-print("\n\n")
-
-print("movie studios with most oscar :",df.groupby('PRODUCTION_STUDIO'))
-
-#avg rating by genre using groupby
-avg_rate_by_g = df.groupby('GENRE')['IMDB_RATING'].mean()
+            min_budget = df['Budget_USD'].min()
+           
 
 
-print(avg_rate_by_g)
+            stats_text =f"""
+                ✿ Analyzed data ✿
+            Ratings:
+            -maximum rating: {max_rating}
+            -minimum rating: {min_rating}
+            -average rating: {avg_rating:.2f}
 
-print("\n\n")
-#value count by category 
+            Budgeting:
+            -maximum budget: {max_budget} $
+            -minimum budget: {min_budget} $
+            -average budget: {avg_budget:.2f} $
+            """
+            result_lable.config(text=stats_text)
 
-print("#value count by category :")
- 
-g_count = df['GENRE'].value_counts()
-print(g_count)
+            genre_count = df['Genre'].value_counts()
+            value_count_text = "*values count by category :\n" + genre_count.to_string()
+            value_count_label.config(text=value_count_text)
 
-#filtering by condition
+            for widget in chart_frame.winfo_children():
+                 widget.destroy()
 
-a = (input("enter the genre :"))
+            #----------------------------charts=========================
 
-filtered_g = df[df['GENRE'] == a]
 
-print(filtered_g)
-print("\n\n")
-#sorting
+            fig ,axes = plt.subplots(2, 2, figsize=(10, 6))
 
-print("movies sorted by year :")
-s_year = df.sort_values(by='YEAR', ascending=True)
-print(s_year)
 
-#[4]Creating Charts (Data Visualization)
+            #barchart
+            df['Genre'].value_counts().plot(kind='bar', ax=axes[0,0],color='skyblue', edgecolor='black')
+            axes[0,0].set_title("genre bar chart")
+            axes[0,0].set_ylabel("count")
 
-#barchart
-df['GENRE'].value_counts().plot(kind='bar')
-plt.show()
-plt.title("genre barchart")
-plt.savefig("chart.png") 
 
-#pie chart
-df['GENRE'].value_counts().plot(kind='pie')
-plt.show()
-plt.title("genre pie chart")
-plt.savefig("chart.png") 
+            #pichart
+            df['Genre'].value_counts().plot(kind='pie', ax=axes[0,1], autopct='%1.1f%%')
+            axes[0,1].set_title("Genre Pie Chart")
+            axes[0,1].set_ylabel("") 
 
-#scatter plot
-sns.scatterplot(x='GENRE', y='OSCARS_WON',data=df)
-plt.title("genre x no of oscars")
-plt.show()
-plt.savefig("chart.png") 
+            #scatter char
+            sns.scatterplot(x='Genre', y='Oscars_Won', data=df, ax=axes[1,0])
+            axes[1,0].set_title("Genre vs Number of Oscars")
+            axes[1,0].set_xlabel("Genre")
+            axes[1,0].set_ylabel("Oscars Won")
 
-#histogram
-df['GENRE'].value_counts().plot(kind='hist',bins=5,color='skyblue',edgecolor='black')
-plt.title("count by genre")
-plt.xlabel("count")
-plt.ylabel("genre")
-plt.show()
-plt.savefig("chart.png") 
+            #histogram
+            df['Genre'].value_counts().plot(kind='hist', bins=5, color='lightgreen', edgecolor='black', ax=axes[1,1])
+            axes[1,1].set_title("Count by Genre")
+            axes[1,1].set_xlabel("Count")
+            axes[1,1].set_ylabel("Genre")
+
+            plt.tight_layout()
+
+            canvas = FigureCanvasTkAgg(fig, master=chart_frame)
+            canvas.draw()
+            canvas.get_tk_widget().pack(fill="both", expand=True)
 
 
 
-#saving cleaned data
+
+        except Exception as e:
+                messagebox.showerror("Error",f"An error occured: {e}")
+
+#operations
+
+#** data filter function **
+
+def filter_genre():
+     
+     genre = genre_entry.get()
+
+     if 'df' in globals():
+          filtered_df=df[df['Genre']==genre]
+          filtered_text.delete("1.0",tk.END)
+          if not filtered_df.empty:
+               display_df = filtered_df[['Movie', 'Year', 'Genre']]
+               filtered_text.insert(tk.END, display_df.to_string(index=False))
+     else:
+               filtered_text.insert(tk.END, f"no movies found for genre: {genre}")
+          
+               filtered_text.insert(tk.END, f"no movies found for genre: {genre}")
+
+filter_button.config(command=filter_genre)
+
+#-----------------------------------------------------UI------------------------------------------------------------------                
+
+#button
+upload_btn = tk.Button(root,text="upload file",command=upload_file,font=("Arial",12))
+upload_btn.pack(side="top",pady=10)
+
+
+
+root.mainloop()
+
 df.to_excel("cleand_movie_data.xlsx",index=False)
